@@ -105,21 +105,22 @@ void Queue::swapInfo(table* t1, table* t2) {
 }
 
 void Queue::selectionSort(int n) {
-    table* temp = front;
     table* temp_head = front;
     while (temp_head != NULL) {
         if (n == 0) {
             return;
         }
-        temp = temp_head->next;
+        table* temp = temp_head;
+        table* max_age = temp_head;
         while (temp != NULL) {
-            if (temp->age > temp_head->age) {
-                swapInfo(temp_head, temp);
+            if (temp->age > max_age->age) {
+                max_age = temp;
             }
             temp = temp->next;
         }
-        temp_head = temp_head->next;
+        swapInfo(temp_head, max_age);
         n--;
+        temp_head = temp_head->next;
     }
 }
 
