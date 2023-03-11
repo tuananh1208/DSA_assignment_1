@@ -151,7 +151,7 @@ public:
 };
 
 void Stack::push(table* t) {
-    if (size > 2*MAXSIZE) {
+    if (size >= 2*MAXSIZE) {
         return;
     }
     table* temp = t;
@@ -216,54 +216,33 @@ bool Stack::isExist(string name, int age) {
     return false;
 }
 
-bool isAllDigits(const std::string& str) {
-    for (char c : str) {
-        if (!isdigit(c)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 bool checkID(string& ID) {
     if (ID.size() == 0) {
         ID = "0";
         return true;
     }
-    if (isAllDigits(ID)) {
-        if(stoi(ID) < 1 || stoi(ID) > MAXSIZE) {
+    if(stoi(ID) < 1 || stoi(ID) > MAXSIZE) {
             return false;
-        }
+    } else {
         return true;
     }
-    return false;
-}
-
-bool checkName(const string& name) {
-    if(name.find(' ') != string::npos) {
-        return false;
-    }
-    return true;
+    
 }
 
 bool checkAge(const string& age) {
-    if(isAllDigits(age)) {
-        if(stoi(age) < 16 || stoi(age) > 115) {
-            return false;
-        }
+    if(stoi(age) < 16 || stoi(age) > 115) {
+        return false;
+    } else {
         return true;
     }
-    return false;
 }
 
 bool checkNum(const string& num) {
-    if(isAllDigits(num)) {
-        if(stoi(num) > MAXSIZE) {
-            return false;
-        }
+    if(stoi(num) <= 0 || stoi(num) > MAXSIZE) {
+        return false;
+    } else {
         return true;
     }
-    return false;
 }
 
 int numberOfTables(restaurant* r) {
@@ -310,7 +289,7 @@ void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* custome
     }
 
     // check ID, name, age validity
-    if (!checkID(temp_ID) || !checkName(name) || !checkAge(temp_age)) { 
+    if (!checkID(temp_ID) || !checkAge(temp_age)) { 
         return;
     }
 
@@ -320,9 +299,12 @@ void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* custome
     ////
     table* currTable = r->recentTable;
     if (isFull(r)) { // if full
-        customer_queue->enQueue(ID, name, age);
-
-        if (!customer_stack->isExist(name, age)) {
+        if (customer_queue->getSize() >= MAXSIZE) {
+            return;
+        }
+        customer_queue->enQueue(ID, name, age); // add to queue
+        //cout << "*" << customer_queue->getSize() << "*";
+        if (!customer_stack->isExist(name, age)) { // if name is not exist in stack and queue is not full
             table* push_table = new table(0, name, age, NULL); // push to stack
             customer_stack->push(push_table);
         }
@@ -379,7 +361,7 @@ void regm(string cmd, restaurant* r, Stack* customer_stack) {
     
 
     // check ID, name, age validity
-    if (isFull(r) || !checkName(name) || !checkAge(temp_age) || !checkNum(temp_num)) { 
+    if (isFull(r) || !checkAge(temp_age) || !checkNum(temp_num)) { 
         return;
     }
 
@@ -431,6 +413,7 @@ void regm(string cmd, restaurant* r, Stack* customer_stack) {
     headMerge->name = name;
     headMerge->age = age;
     r->recentTable = headMerge;
+
     unmergeTable = headMerge->next;
     headMerge->next = tailMerge;
 
@@ -447,7 +430,7 @@ void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack
     table* currTable = r->recentTable;
 
     /// check if table is single or merged
-    if (numberOfTables(r) < MAXSIZE) { // clear merged table
+    if (numberOfTables(r) < MAXSIZE) { // clear when there is a merged table
         int pre_ID = currTable->ID;
         currTable = currTable->next;
         int cur_ID = currTable->ID;
@@ -477,10 +460,11 @@ void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack
             currTable->age = 0;
             currTable->next = unmergeTable;
 
-            while (empty_table && customer_queue->getSize() > 0) {
+            while (empty_table && customer_queue->getSize() > 0) { // add cus from queue
                 reg(customer_queue->toStringFront(), r, customer_queue, customer_stack);
                 empty_table--;
             }
+
         } else { // if clear single table
             // while (currTable->ID != ID) { // go to ID table
             //     currTable = currTable->next;
@@ -527,9 +511,8 @@ void ps(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack)
     int num;
     if (cmd == "PS") {
         num = 2*MAXSIZE;
-    }
-    else {
-        if (!isAllDigits(cmd) && (stoi(cmd) < 1 || stoi(cmd) > 2*MAXSIZE)) {
+    } else {
+        if (stoi(cmd) <= 0 || stoi(cmd) > 2*MAXSIZE) {
             return;
         } else {
             num = stoi(cmd);
@@ -548,7 +531,7 @@ void pq(string cmd, restaurant* r, Queue* customer_queue) {
     if (cmd == "PQ") {
         customer_queue->printQueue(MAXSIZE);
     } else {
-        if(!checkID(cmd)) {
+        if(!checkNum(cmd)) {
             return;
         }
         customer_queue->printQueue(stoi(cmd));
@@ -558,13 +541,34 @@ void pq(string cmd, restaurant* r, Queue* customer_queue) {
 void sq(string cmd, restaurant* r, Queue* customer_queue) {
     // SQ <NUM>  selection sort
     // cmd = NUM
-    if (cmd == "" || !checkID(cmd)) {
+    if (cmd == "SQ" || !checkNum(cmd)) {
         return;
     }
     int num = stoi(cmd);
     customer_queue->selectionSort(num);
     customer_queue->printQueue(MAXSIZE);
 
+}
+
+void pt(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack) {
+    table* temp = customer_stack->top;
+    for (int i = 0; i < customer_queue->getSize(); i++) {
+        temp = temp->next;
+    }
+
+    string name = temp->name;
+    int age = temp->age;
+
+    temp = r->recentTable;
+    while (temp->name != name || temp->age != age) {
+        temp = temp->next;
+    }
+    
+    table* currTable = temp;
+    do {
+        cout << temp->ID << "-" << temp->name << endl;
+        temp = temp->next;
+    } while (temp != currTable);
 }
 
 void simulate(string filename, restaurant* r)
@@ -589,6 +593,8 @@ void simulate(string filename, restaurant* r)
             pq(cmd, r, customer_queue);
         } else if (key == "SQ") {
             sq(cmd, r, customer_queue);
+        } else if (key == "PT") {
+            pt(cmd, r, customer_queue, customer_stack);
         }
     }
     delete customer_queue;
