@@ -55,7 +55,6 @@ void Queue::deQueue() {
         return;
     }
     table* temp = this->front;
-    table* currTable = this->front;
     this->front = this->front->next;
     delete temp;
     this->size--;
