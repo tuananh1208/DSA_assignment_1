@@ -55,7 +55,6 @@ void Queue::deQueue() {
         return;
     }
     table* temp = this->front;
-    table* currTable = this->front;
     this->front = this->front->next;
     delete temp;
     this->size--;
@@ -126,12 +125,12 @@ void Queue::selectionSort(int n) {
 
 class Stack {
 private:
-    int size;
+    int size; // 1->2*MAXSIZE
 public:
     table* top;
     Stack() {
         top = NULL;
-        size = 0; // 1->2*MAXSIZE
+        size = 0; 
     }
     ~Stack() {
         table* currTable = top;
@@ -177,7 +176,6 @@ void Stack::popAt(string name, int age) {
         size--;
         return;
     }
-
     table* pre_temp = top; // delete others
     while (pre_temp->next != NULL) {
         if (pre_temp->next->name == name && pre_temp->next->age == age) {
@@ -303,11 +301,14 @@ void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* custome
     ////
     table* currTable = r->recentTable;
     if (isFull(r)) { // if full
-        if (customer_queue->getSize() >= MAXSIZE) {
-            
+        if (customer_queue->getSize() < MAXSIZE) { // return if queue is full
+            customer_queue->enQueue(ID, name, age); // add to queue
+            if (!customer_stack->isExist(name, age)) {         // if name is not exist in stack
+                table* push_table = new table(0, name, age, NULL); // push to stack
+                customer_stack->push(push_table);
+            }
         }
-        customer_queue->enQueue(ID, name, age); // add to queue
-    } else {          // if not full
+    } else {         // if not full
         table* minIDTable = r->recentTable;
         if (ID) { // if customer has ID -> seach ID table
             int min_ID = MAXSIZE;
@@ -333,13 +334,16 @@ void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* custome
         }
         minIDTable->name = name;     // update info and return
         minIDTable->age = age; 
+        
+        /// push to stack
+        if (!customer_stack->isExist(name, age)) { // if name is not exist in stack and queue is not full
+            table* push_table = new table(0, name, age, NULL);
+            customer_stack->push(push_table);
+        }
     }
 
 
-    if (!customer_stack->isExist(name, age)) { // if name is not exist in stack and queue is not full
-        table* push_table = new table(0, name, age, NULL); // push to stack
-        customer_stack->push(push_table);
-    }
+    
 }
 
 void regm(string cmd, restaurant* r, Stack* customer_stack) {
@@ -430,7 +434,7 @@ void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack
     table* currTable = r->recentTable;
     bool clear_merged_table = 0;
 
-    if (unmergeTable != NULL && (ID == unmergeTable->ID-1 || ID == MAXSIZE && unmergeTable->ID == 1)) { // if clear merged table
+    if (unmergeTable != NULL && (ID == unmergeTable->ID-1 || (ID == MAXSIZE && unmergeTable->ID == 1))) { // if clear merged table
         clear_merged_table = 1;
     }
 
@@ -442,11 +446,12 @@ void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack
         currTable->name = ""; // clear info
         currTable->age = 0;
         currTable->next = unmergeTable;
+        customer_stack->popAt(currTable->name, currTable->age); // pop stack
+        unmergeTable = NULL;
 
         while (empty_table && customer_queue->getSize() > 0) { // add cus from queue
             reg(customer_queue->toStringFront(), r, customer_queue, customer_stack);                empty_table--;
         }    
-
     } else { // clear single table
         table* currTable = r->recentTable;
         // while (currTable->ID != ID) { // go to table-ID
@@ -465,6 +470,7 @@ void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack
         if (found_ID) {
             // if queue is not empty -> clear table & add from queue
             // if queue is empty -> clear table
+            customer_stack->popAt(currTable->name, currTable->age); // pop stack
             if (customer_queue->getSize() == 0) {
                 currTable->name = ""; // clear info
                 currTable->age = 0;
@@ -556,36 +562,3 @@ void simulate(string filename, restaurant* r)
     delete customer_stack;
 }
 
-// REG John 35
-// REG 2 Nam 10
-// REG Wick 35
-// REG 2 Tuan 20
-// REG 3 Eddie 45
-// REG 7 Duck 34
-// REG 5 Epsilon 47
-// CLE 5
-// PS 4
-// CLE 3
-// REG Joh 35
-// REG 2 Na 10
-// REG Wic 35
-// REG 2 Tua 20
-// CLE 5
-// PQ 3
-// REG 3 Eddi 45
-// CLE 3
-// REG 7 Duc 34
-// PS 4
-// REG 5 Epsilo 47
-// REGM TOM 17 4
-// SQ 5
-
-// REG 1 John 35
-// REG 2 Wick 35
-// REG 3 Tuan 20
-// REG 4 Eddie 45
-// REG 5 Duck 34
-// REG 1 Epsilon 47
-// REG 2 Matt 29
-// REG 3 Rooney 36
-// REG 4 Nam 20
