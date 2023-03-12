@@ -55,6 +55,7 @@ void Queue::deQueue() {
         return;
     }
     table* temp = this->front;
+    table* currTable = this->front;
     this->front = this->front->next;
     delete temp;
     this->size--;
@@ -215,6 +216,11 @@ bool Stack::isExist(string name, int age) {
     return false;
 }
 
+class RestaurantStack {
+public:
+    //table;
+};
+
 bool checkID(string& ID) {
     if (ID.size() == 0) {
         ID = "0";
@@ -268,11 +274,10 @@ bool isFull(restaurant* r) {
     return is_full;
 }
 
-table* unmergeTable;
+table* unmergeTable = NULL;
 
 void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack) {
     // REG [ID] <name> <age>
-    string cmd_copy = cmd;
     //// get ID, name, age from cmd
     string temp_ID = "";
     string name;
@@ -299,15 +304,9 @@ void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* custome
     table* currTable = r->recentTable;
     if (isFull(r)) { // if full
         if (customer_queue->getSize() >= MAXSIZE) {
-            return;
+            
         }
         customer_queue->enQueue(ID, name, age); // add to queue
-        //cout << "*" << customer_queue->getSize() << "*";
-        if (!customer_stack->isExist(name, age)) { // if name is not exist in stack and queue is not full
-            table* push_table = new table(0, name, age, NULL); // push to stack
-            customer_stack->push(push_table);
-        }
-        
     } else {          // if not full
         table* minIDTable = r->recentTable;
         if (ID) { // if customer has ID -> seach ID table
@@ -334,11 +333,12 @@ void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* custome
         }
         minIDTable->name = name;     // update info and return
         minIDTable->age = age; 
+    }
 
-        if (!customer_stack->isExist(name, age)) {
-            table* push_table = new table(0, name, age, NULL); // push to stack
-            customer_stack->push(push_table);
-        }
+
+    if (!customer_stack->isExist(name, age)) { // if name is not exist in stack and queue is not full
+        table* push_table = new table(0, name, age, NULL); // push to stack
+        customer_stack->push(push_table);
     }
 }
 
@@ -413,95 +413,68 @@ void regm(string cmd, restaurant* r, Stack* customer_stack) {
     headMerge->age = age;
     r->recentTable = headMerge;
 
-    unmergeTable = headMerge->next;
+    unmergeTable = headMerge->next; // unmerge table
     headMerge->next = tailMerge;
 
     table* push_table = new table(0, name, age, NULL); // push to stack
     customer_stack->push(push_table);
 }
 
-void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack) { 
+void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack) {
     // CLE <ID>
     if (!checkID(cmd)) {
         return;
     }
+
     int ID = stoi(cmd);
     table* currTable = r->recentTable;
+    bool clear_merged_table = 0;
 
-    /// check if table is single or merged
-    if (numberOfTables(r) < MAXSIZE) { // clear when there is a merged table
-        int pre_ID = currTable->ID;
-        currTable = currTable->next;
-        int cur_ID = currTable->ID;
+    if (unmergeTable != NULL && (ID == unmergeTable->ID-1 || ID == MAXSIZE && unmergeTable->ID == 1)) { // if clear merged table
+        clear_merged_table = 1;
+    }
 
-        for (int i = 0; i < numberOfTables(r); i++) {
-            if ((pre_ID == MAXSIZE && cur_ID == 1) || (cur_ID == pre_ID+1)) {
-                currTable = currTable->next;
-                pre_ID = cur_ID;
-                cur_ID = currTable->ID;
-                continue;
-            } else {
+    if (clear_merged_table) {
+        int empty_table = MAXSIZE - numberOfTables(r) + 1;
+        while (currTable->ID != ID) {
+            currTable = currTable->next;
+        }
+        currTable->name = ""; // clear info
+        currTable->age = 0;
+        currTable->next = unmergeTable;
+
+        while (empty_table && customer_queue->getSize() > 0) { // add cus from queue
+            reg(customer_queue->toStringFront(), r, customer_queue, customer_stack);                empty_table--;
+        }    
+
+    } else { // clear single table
+        table* currTable = r->recentTable;
+        // while (currTable->ID != ID) { // go to table-ID
+        //     currTable = currTable->next;
+        // }
+        bool found_ID = 0;
+
+        for (int i = 0; i < MAXSIZE; i++) {
+            if (currTable->ID == ID) {
+                found_ID = 1;
                 break;
             }
+            currTable = currTable->next;
         }
-
-        int merge_ID = pre_ID;
-
-        if (ID == merge_ID) { // if clear merged table
-            int empty_table = MAXSIZE - numberOfTables(r);
-            while (currTable->ID != merge_ID) {
-                currTable = currTable->next;
-            }
-
-            customer_stack->popAt(currTable->name, currTable->age); // pop stack
-
-            currTable->name = ""; // clear info
-            currTable->age = 0;
-            currTable->next = unmergeTable;
-
-            while (empty_table && customer_queue->getSize() > 0) { // add cus from queue
-                reg(customer_queue->toStringFront(), r, customer_queue, customer_stack);
-                empty_table--;
-            }
-
-        } else { // if clear single table
-            // while (currTable->ID != ID) { // go to ID table
-            //     currTable = currTable->next;
-            // }
-            bool found_ID = false;
-            for (int i = 0; i < MAXSIZE; i++) {
-                if (currTable->ID == ID) {
-                    found_ID = true;
-                    break;
-                }
-                currTable = currTable->next;
-            }
-
-            if (!found_ID) { // if can't find ID table
-                return;
-            }
-            
-            customer_stack->popAt(currTable->name, currTable->age); // pop stack
-
+        
+        if (found_ID) {
+            // if queue is not empty -> clear table & add from queue
+            // if queue is empty -> clear table
             if (customer_queue->getSize() == 0) {
-                currTable->name = "";   // clear info
+                currTable->name = ""; // clear info
                 currTable->age = 0;
             } else {
                 customer_queue->getFront(currTable);
             }
-        }
-    } else { // clear single table
-        table* currTable = r->recentTable;
-        while (currTable->ID != ID) { // go to ID table
-            currTable = currTable->next;
-        }
-        customer_stack->popAt(currTable->name, currTable->age); // pop stack
-        if (customer_queue->getSize() == 0) {
-            currTable->name = ""; // clear info
-            currTable->age = 0;
         } else {
-            customer_queue->getFront(currTable);
+            return;
         }
+        
     }
 }
 
@@ -549,25 +522,8 @@ void sq(string cmd, restaurant* r, Queue* customer_queue) {
 
 }
 
-void pt(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack) {
-    table* temp = customer_stack->top;
-    for (int i = 0; i < customer_queue->getSize(); i++) {
-        temp = temp->next;
-    }
-
-    string name = temp->name;
-    int age = temp->age;
-
-    temp = r->recentTable;
-    while (temp->name != name || temp->age != age) {
-        temp = temp->next;
-    }
+void pt(restaurant* r) {
     
-    table* currTable = temp;
-    do {
-        cout << temp->ID << "-" << temp->name << endl;
-        temp = temp->next;
-    } while (temp != currTable);
 }
 
 void simulate(string filename, restaurant* r)
@@ -593,7 +549,7 @@ void simulate(string filename, restaurant* r)
         } else if (key == "SQ") {
             sq(cmd, r, customer_queue);
         } else if (key == "PT") {
-            pt(cmd, r, customer_queue, customer_stack);
+            pt(r);
         }
     }
     delete customer_queue;
