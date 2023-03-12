@@ -216,7 +216,21 @@ bool Stack::isExist(string name, int age) {
 
 class RestaurantStack {
 public:
-    //table;
+    table* top;
+    RestaurantStack() {
+        top = NULL;
+    }
+    ~RestaurantStack() {
+        table* currTable = top;
+        while (currTable != NULL) {
+            table* temp = currTable;
+            currTable = currTable->next;
+            delete temp;
+        }
+    }
+    void push(table*);
+    void popAt(string, int);
+
 };
 
 bool checkID(string& ID) {
