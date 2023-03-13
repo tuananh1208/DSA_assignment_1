@@ -593,4 +593,12 @@ void simulate(string filename, restaurant* r)
     delete customer_queue;
     delete customer_queue_to_print;
     delete customer_stack;
+
+    table *temp = r->recentTable->next;
+    while (temp != r->recentTable)
+    {
+        table *curr = temp;
+        temp = temp->next;
+        delete curr;
+    }
 }
