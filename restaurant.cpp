@@ -23,6 +23,8 @@ public:
     void swapInfo(table*, table*);
     void selectionSort(int);
     void printQueue(int);
+    void popAt(table*);
+    table* Front() { return front; }
 };
 
 int Queue::getSize() {
@@ -117,6 +119,28 @@ void Queue::selectionSort(int n) {
         n--;
         temp_head = temp_head->next;
     }
+}
+
+void Queue::popAt(table* t) {
+    if (front->name == t->name && front->age == t->age) {
+        table* temp = front;
+        front = front->next;
+        delete temp;
+        this->size--;
+        return;
+    }
+
+    table* prev = front;
+    while (prev != NULL) {
+        if (prev->next->name == t->name && prev->next->age == t->age) {
+            break;
+        }
+        prev = prev->next;
+    }
+    table* temp = prev->next;
+    prev->next = temp->next;
+    delete temp;
+    this->size--;
 }
 
 class Stack {
@@ -449,8 +473,8 @@ void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack
         unmergeTable = NULL;
 
         while (empty_table && customer_queue->getSize() > 0) { // add cus from queue
+            customer_queue_to_print->popAt(customer_queue->Front()); 
             reg(customer_queue->toStringFront(), r, customer_queue, customer_stack, customer_queue_to_print);
-            customer_queue_to_print->deQueue();                
             empty_table--;
         }    
     } else { // clear single table
@@ -478,8 +502,8 @@ void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack
                 currTable->name = ""; // clear info
                 currTable->age = 0;
             } else {
+                customer_queue_to_print->popAt(customer_queue->Front()); 
                 customer_queue->getFront(currTable);
-                customer_queue_to_print->deQueue();
             }
         } else {
             return;
