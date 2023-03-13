@@ -269,14 +269,23 @@ bool isFull(restaurant* r) {
 
 table* unmergeTable = NULL;
 
-void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack) {
+bool hasID(string cmd) {
+    //ID-name-age
+    //name-age
+    if (cmd.find(' ') == cmd.rfind(' ')) {
+        return false;
+    }
+    return true;
+}
+
+void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack, Queue* customer_queue_to_print) {
     // REG [ID] <name> <age>
     //// get ID, name, age from cmd
     string temp_ID = "";
     string name;
     string temp_age;
 
-    if (isdigit(cmd.front())) {
+    if (hasID(cmd)) {
         temp_ID = cmd.substr(0, cmd.find(' '));
         name = cmd.substr(cmd.find(' ') + 1, cmd.rfind(' ') - cmd.find(' ') - 1);
         temp_age = cmd.substr(cmd.rfind(' ') + 1);
@@ -298,6 +307,8 @@ void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* custome
     if (isFull(r)) { // if full
         if (customer_queue->getSize() < MAXSIZE) { // return if queue is full
             customer_queue->enQueue(ID, name, age); // add to queue
+            customer_queue_to_print->enQueue(ID, name, age);
+
             if (!customer_stack->isExist(name, age)) {         // if name is not exist in stack
                 table* push_table = new table(0, name, age, NULL); // push to stack
                 customer_stack->push(push_table);
@@ -341,7 +352,7 @@ void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* custome
 
 void regm(string cmd, restaurant* r, Stack* customer_stack) {
     //// if there was a merge table -> return
-    if (numberOfTables(r) < MAXSIZE) {
+    if (unmergeTable != NULL) {
         return;
     }
 
@@ -417,7 +428,7 @@ void regm(string cmd, restaurant* r, Stack* customer_stack) {
     customer_stack->push(push_table);
 }
 
-void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack) {
+void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack, Queue* customer_queue_to_print) {
     // CLE <ID>
     if (!checkID(cmd)) {
         return;
@@ -445,7 +456,8 @@ void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack
         unmergeTable = NULL;
 
         while (empty_table && customer_queue->getSize() > 0) { // add cus from queue
-            reg(customer_queue->toStringFront(), r, customer_queue, customer_stack);                
+            reg(customer_queue->toStringFront(), r, customer_queue, customer_stack, customer_queue_to_print);
+            customer_queue_to_print->deQueue();                
             empty_table--;
         }    
     } else { // clear single table
@@ -474,6 +486,7 @@ void cle(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack
                 currTable->age = 0;
             } else {
                 customer_queue->getFront(currTable);
+                customer_queue_to_print->deQueue();
             }
         } else {
             return;
@@ -500,17 +513,17 @@ void ps(string cmd, restaurant* r, Queue* customer_queue, Stack* customer_stack)
     customer_stack->printStack(num);
 }
 
-void pq(string cmd, restaurant* r, Queue* customer_queue) {
+void pq(string cmd, restaurant* r, Queue* customer_queue_to_print) {
     // PQ [NUM]
     // cmd = NUM
 
     if (cmd == "PQ") {
-        customer_queue->printQueue(MAXSIZE);
+        customer_queue_to_print->printQueue(MAXSIZE);
     } else {
         if(!checkNum(cmd)) {
             return;
         }
-        customer_queue->printQueue(stoi(cmd));
+        customer_queue_to_print->printQueue(stoi(cmd));
     }
 }
 
@@ -537,6 +550,7 @@ void pt(restaurant* r, Queue* customer_queue, Stack* customer_stack) {
 void simulate(string filename, restaurant* r)
 {
     Queue* customer_queue = new Queue;
+    Queue* customer_queue_to_print = new Queue;
     Stack* customer_stack = new Stack;
     ifstream myfile(filename);
     string cmd;
@@ -544,15 +558,15 @@ void simulate(string filename, restaurant* r)
         string key = cmd.substr(0, cmd.find(" "));
         cmd = cmd.substr(cmd.find(" ") + 1);
         if (key == "REG") {
-            reg(cmd, r, customer_queue, customer_stack);
+            reg(cmd, r, customer_queue, customer_stack, customer_queue_to_print);
         } else if (key == "REGM") {
             regm(cmd, r, customer_stack);
         } else if (key == "CLE") {
-            cle(cmd, r, customer_queue, customer_stack);
+            cle(cmd, r, customer_queue, customer_stack, customer_queue_to_print);
         } else if (key == "PS") {
             ps(cmd, r, customer_queue, customer_stack);
         } else if (key == "PQ") {
-            pq(cmd, r, customer_queue);
+            pq(cmd, r, customer_queue_to_print);
         } else if (key == "SQ") {
             sq(cmd, r, customer_queue);
         } else if (key == "PT") {
@@ -560,6 +574,8 @@ void simulate(string filename, restaurant* r)
         }
     }
     delete customer_queue;
+    delete customer_queue_to_print;
     delete customer_stack;
 }
 
+// fix reg cle pq
