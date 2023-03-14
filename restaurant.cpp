@@ -118,7 +118,7 @@ void Queue::selectionSort(int n) {
         swapInfo(temp_head, max_age);
         temp = temp_head;
         while (temp != max_age) {
-            if (temp->age == max_age->age && temp->name == max_age->name) {
+            if (temp->age == max_age->age) {
                 swapInfo(temp, max_age);
             }
             temp = temp->next;
@@ -349,7 +349,7 @@ void reg(const string& cmd, restaurant* r, Queue* customer_queue, Stack* custome
                 }
                 currTable = currTable->next;
             }
-        } else { // if no ID -> seach 1st table
+        } else { // if no ID -> seach minID table
             int min_ID = MAXSIZE;
             for (int i = 1; i <= MAXSIZE; i++) {
                 if (currTable->ID <= min_ID) {
