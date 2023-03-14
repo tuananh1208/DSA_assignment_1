@@ -116,6 +116,13 @@ void Queue::selectionSort(int n) {
             temp = temp->next;
         }
         swapInfo(temp_head, max_age);
+        temp = temp_head;
+        while (temp != max_age) {
+            if (temp->age == max_age->age && temp->name == max_age->name) {
+                swapInfo(temp, max_age);
+            }
+            temp = temp->next;
+        }
         n--;
         temp_head = temp_head->next;
     }
