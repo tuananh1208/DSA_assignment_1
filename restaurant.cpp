@@ -1,31 +1,44 @@
 #include "main.h"
-//ofstream outfile; 
-
 
 class Queue {
-private:
-
-    table* front; 
-    int size; // <= MAXSIZE
 public:
-    Queue() : front(NULL), size(0) {}
+    class Node {
+    public:
+        table* t;
+        int ord_num;
+        Node* next;
+        Node(): t(NULL), ord_num(0), next(NULL) {}
+        ~Node() {
+            delete t;
+            next = NULL;
+        }
+        Node(table* t, Node* next) : t(t), next(next) {}
+        Node(table* t, int ord_num, Node* next) : t(t), ord_num(ord_num), next(next) {}
+    };
+public:
+    Node* front;
+    int size; // <= MAXSIZE
+    int ord_num_Q;
+    Queue() : front(NULL), size(0), ord_num_Q(0) {}
     ~Queue() {
-        table* currTable = front;
+        Node* currTable = front;
         while (currTable != NULL) {
-            table* temp = currTable;
+            Node* temp = currTable;
             currTable = currTable->next;
             delete temp;
         }
+        currTable = NULL;
+        size = 0;
     }
     void enQueue(int, string, int);
     void deQueue();
     int getSize();
     string toStringFront();
-    void swapInfo(table*, table*);
+    void swapInfo(Node*, Node*);
     void selectionSort(int);
     void printQueue(int);
     void popAt(table*);
-    table* Front() { return front; }
+    table* Front() { return front->t; }
 };
 
 int Queue::getSize() {
@@ -36,18 +49,19 @@ void Queue::enQueue(int ID, string name, int age) {
     if (this->size == MAXSIZE) {
         return;
     }
+    ord_num_Q++;
     table* newTable = new table(ID, name, age, NULL);
-
+    Node* newNode = new Node(newTable, ord_num_Q, NULL);
     if (this->size == 0) {
-        this->front = newTable;
+        this->front = newNode;
         this->size++;
         return;
     }
-    table* currTable = this->front;
+    Node* currTable = this->front;
     while (currTable->next != NULL) {
         currTable = currTable->next;
     }
-    currTable->next = newTable;
+    currTable->next = newNode;
     this->size++;
 }
 
@@ -55,7 +69,7 @@ void Queue::deQueue() {
     if (this->size == 0) {
         return;
     }
-    table* temp = this->front;
+    Node* temp = this->front;
     this->front = this->front->next;
     delete temp;
     this->size--;
@@ -63,7 +77,7 @@ void Queue::deQueue() {
 
 string Queue::toStringFront() {
     string res = "";
-    res += (front->ID == 0 ? "" : to_string(front->ID)  + " ") + front->name + " " + to_string(front->age);
+    res += (front->t->ID == 0 ? "" : to_string(front->t->ID)  + " ") + front->t->name + " " + to_string(front->t->age);
     deQueue();
     return res;
 }
@@ -77,66 +91,60 @@ void Queue::printQueue(int n) {
         cout << "Empty" << endl;
     }
 
-    table* temp = this->front;
+    Node* temp = this->front;
     for (int i = 0; i < n; i++) {
         if(temp == NULL) {
             return;
         }
-        cout << temp->name << endl;
+        cout << temp->t->name << endl;
         temp = temp->next;
     }
 }
 
-void Queue::swapInfo(table* t1, table* t2) {
-    swap(t1->ID, t2->ID);
-    swap(t1->name, t2->name);
-    swap(t1->age, t2->age);
+void Queue::swapInfo(Node* n1, Node* n2) {
+    swap(n1->t->ID, n2->t->ID);
+    swap(n1->t->name, n2->t->name);
+    swap(n1->t->age, n2->t->age);
+    swap(n1->ord_num,n2->ord_num);
 }
 
 void Queue::selectionSort(int n) {
-    table* temp_head = front;
+    Node* temp_head = front;
     while (temp_head != NULL) {
         if (n == 0) {
             return;
         }
-        table* temp = temp_head;
-        table* max_age = temp_head;
+        Node* temp = temp_head;
+        Node* max_age = temp_head;
         while (temp != NULL) {
-            if (temp->age > max_age->age) {
+            if (temp->t->age > max_age->t->age || (temp->t->age == max_age->t->age && temp->ord_num < max_age->ord_num)) {
                 max_age = temp;
             }
             temp = temp->next;
         }
         swapInfo(temp_head, max_age);
-        temp = temp_head;
-        while (temp != max_age) {
-            if (temp->age == max_age->age) {
-                swapInfo(temp, max_age);
-            }
-            temp = temp->next;
-        }
         n--;
         temp_head = temp_head->next;
     }
 }
 
-void Queue::popAt(table* t) {
-    if (front->name == t->name && front->age == t->age) {
-        table* temp = front;
+void Queue::popAt(table* popTable) {
+    if (front->t->name == popTable->name && front->t->age == popTable->age) {
+        Node* temp = front;
         front = front->next;
         delete temp;
         this->size--;
         return;
     }
 
-    table* prev = front;
+    Node* prev = front;
     while (prev != NULL) {
-        if (prev->next->name == t->name && prev->next->age == t->age) {
+        if (prev->next->t->name == popTable->name && prev->next->t->age == popTable->age) {
             break;
         }
         prev = prev->next;
     }
-    table* temp = prev->next;
+    Node* temp = prev->next;
     prev->next = temp->next;
     delete temp;
     this->size--;
@@ -293,7 +301,7 @@ bool hasID(string cmd) {
 }
 
 void reg(const string& cmd, restaurant*& r, Queue*& customer_queue, Stack*& customer_stack, Queue*& customer_queue_to_print) {
-    // REG [ID] <name> <age>
+    // REG {ID} <name> <age>
     //// get ID, name, age from cmd
     string temp_ID = "";
     string name;
@@ -330,7 +338,15 @@ void reg(const string& cmd, restaurant*& r, Queue*& customer_queue, Stack*& cust
         }
     } else {         // if not full
         table* minIDTable = r->recentTable;
-        if (ID) { // if customer has ID -> seach ID table
+        bool check_greater_ID_exist = 0;
+        for (int i = 1; i<= MAXSIZE; i++) {
+            if (currTable->ID >= ID) {
+                check_greater_ID_exist = 1;
+                break;
+            }
+            currTable = currTable->next;
+        }
+        if (ID && check_greater_ID_exist) { // if customer has ID -> seach ID table
             int min_ID = MAXSIZE;
             for (int i = 1; i <= MAXSIZE; i++) {
                 if (currTable->ID >= ID && currTable->ID <= min_ID) {
@@ -475,7 +491,7 @@ void cle(string cmd, restaurant*& r, Queue*& customer_queue, Stack*& customer_st
             empty_table--;
         }    
     } else { // clear single table
-        table* currTable = r->recentTable;
+        currTable = r->recentTable;
         bool found_ID = 0;
 
         for (int i = 0; i < MAXSIZE; i++) {
@@ -501,10 +517,6 @@ void cle(string cmd, restaurant*& r, Queue*& customer_queue, Stack*& customer_st
                 customer_queue_to_print->popAt(customer_queue->Front()); 
                 reg(customer_queue->toStringFront(), r, customer_queue, customer_stack, customer_queue_to_print);
             }
-            // customer_queue_to_print->popAt(customer_queue->Front()); 
-            // customer_queue->getFront(currTable);
-         
-
         } else {
             return;
         }
@@ -512,7 +524,7 @@ void cle(string cmd, restaurant*& r, Queue*& customer_queue, Stack*& customer_st
 }
 
 void ps(string cmd, Stack* customer_stack) {
-    // PS [NUM]
+    // PS {NUM}
     int num;
     if (cmd == "PS") {
         num = 2*MAXSIZE;
@@ -530,7 +542,7 @@ void ps(string cmd, Stack* customer_stack) {
 }
 
 void pq(string cmd, Queue* customer_queue_to_print) {
-    // PQ [NUM]
+    // PQ {NUM}
     // cmd = NUM
 
     if (cmd == "PQ") {
@@ -558,14 +570,17 @@ void sq(string cmd, Queue*& customer_queue) {
 void pt(restaurant* r) {
     table* currTable = r->recentTable;
     do {
-        cout << currTable->ID << "-" << (currTable->name == "" ? "Empty" : currTable->name) << endl;
+        if (currTable->name == "") {
+            currTable = currTable->next;
+            continue;
+        }
+        cout << currTable->ID << "-" << currTable->name << endl;
         currTable = currTable->next;
     } while (currTable != r->recentTable);
 }
 
 void simulate(string filename, restaurant* r)
 {   
-    // outfile.open("got" + to_string(testcase) + ".txt"); //don't forget to close at the end of the function
     Queue* customer_queue = new Queue;
     Queue* customer_queue_to_print = new Queue;
     Stack* customer_stack = new Stack;
@@ -589,7 +604,7 @@ void simulate(string filename, restaurant* r)
             sq(cmd, customer_queue);
         } else if (key == "PT") {
             pt(r);
-        }
+        } 
     }
     delete customer_queue;
     delete customer_queue_to_print;
@@ -601,6 +616,5 @@ void simulate(string filename, restaurant* r)
         table *curr = temp;
         temp = temp->next;
         delete curr;
-    }    
-    // outfile.close();
+    }
 }
